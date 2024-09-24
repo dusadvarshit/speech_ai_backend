@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, Response, jsonify
 from flask_cors import CORS
 import os
 import boto3
-from aws_helper import upload_file_to_audios
+from aws_helper import upload_file_to_audios, generate_presigned_url
 from pause_finder import pause_main
 from general_helpers import convert_webm_to_wav
 import json
@@ -10,6 +10,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_migrate import Migrate
+from datetime import datetime, timedelta
+import uuid
 
 ## Accessing .env file
 from dotenv import load_dotenv
@@ -25,6 +27,7 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=6)
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -38,7 +41,16 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     name = db.Column(db.String(120), nullable=True)
+    recordings = db.relationship('Recording', backref='user', lazy=True)
     
+class Recording(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    unique_id = db.Column(db.String(36), nullable=False, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    file_name = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    s3_presigned_url = db.Column(db.String(2048), nullable=True)
+    audio_signal_analysis = db.Column(db.JSON, nullable=True)
 
 # Ensure the upload directory exists
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -67,6 +79,7 @@ def register():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+    print('DAAATAA',data)
     username = data.get('username')
     password = data.get('password')
 
@@ -76,58 +89,82 @@ def login():
         access_token = create_access_token(identity=username)
         return jsonify({"access_token": access_token}), 200
     else:
-        return jsonify({"message": "Invalid username or password"}), 401
+        return jsonify({"message": "Invalid username or password"}), 402
 
 @app.route('/')
-@jwt_required()
+# @jwt_required()
 def index():
     return render_template('index.html')
 
 @app.route('/hello')
-@jwt_required()
 def hello():
     return Response("{'hello':'hello'}", status=201, mimetype='application/json')
 
 @app.route('/upload', methods=['POST'])
 @jwt_required()
 def upload():
-    print(request)
+    print('Uploading...', request.files['file'].filename)
     if 'file' not in request.files:
         return 'No file part'
     
     file = request.files['file']
-    
-    if file.filename == '':
-        return 'No selected file'
-    
-    if file:
-        print('FILE TYPE',type(file))
-        # Save the file to the specified upload folder
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(file_path)
 
-        if '.webm' in file_path:
-            input_file = file_path
-            output_file = file_path.replace('.webm', '.wav')
-            
-            file_path = output_file
-            convert_webm_to_wav(input_file, output_file)
+    current_user = User.query.filter_by(username=get_jwt_identity()).first()
+    print('Current User',current_user.username)
+
+    new_recording = Recording(
+            user_id=current_user.id,
+            file_name=file.filename,
+            unique_id=str(uuid.uuid4())
+        )
+
+    s3_filename = new_recording.unique_id + '.wav'
+    try:
+        db.session.add(new_recording)
+        db.session.commit()
+        print('DB commit successful')
 
         ## Upload file to AWS S3
-        # upload_file_to_audios(file)
-
-        ## Find Pauses
-        pause_info, t = pause_main(file_path)
-        print(pause_info)
+        upload_file_to_audios(file, s3_filename)
 
         return 'File uploaded successfully!'
+    
+    except Exception as e:
+        print('Error in adding recording to DB',e)
 
-@app.route('/list', methods=['get'])
+    
+
+@app.route('/list')
 @jwt_required()
 def list():
-    file_list = os.listdir("./uploads")
+    current_user = User.query.filter_by(username=get_jwt_identity()).first()
+    file_list = [{"filename": file.file_name, "url": file.s3_presigned_url} for file in current_user.recordings]
 
-    return {'data': file_list}
+    return jsonify({'data': file_list}), 201
+
+@app.route('/identity')
+@jwt_required()
+def identity():
+    user_id = get_jwt_identity()
+
+    return jsonify({'user_id': user_id}), 201
+
+
+@app.route('/generate_presigned_url_all', methods=['GET'])
+# @jwt_required()
+def generate_presigned_url_all():
+    
+    missing_urls_recordings = Recording.query.all()#filter_by(username=get_jwt_identity()).filter_by(s3_presigned_url =  None).all()
+
+    for recording in missing_urls_recordings:
+        s3_filename = recording.unique_id + '.wav'
+        url = generate_presigned_url(s3_filename)
+        recording.s3_presigned_url = url
+
+    db.session.commit()
+
+    return 'Generated presigned urls successfully!', 201
+
 
 if __name__ == '__main__':
     with app.app_context():
