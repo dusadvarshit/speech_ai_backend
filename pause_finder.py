@@ -137,6 +137,68 @@ def findMaxima(f, step):
     
     return (Maxima, countMaxima)
 
+def pause_score(pause_info, time_arr):
+    short_pauses = [(i['pause_start'], i['pause_finish'], i['pause_duration']) for i in pause_info if (i['pause_duration']>=0.5 and i['pause_duration']<1)]
+    long_pauses = [(i['pause_start'], i['pause_finish'], i['pause_duration']) for i in pause_info if (i['pause_duration']>=1)]
+
+    pause_score = np.round(((1 - sum([i['pause_duration'] for i in pause_info])/time_arr[-1]))*100)
+
+    print(short_pauses)
+    print(long_pauses)
+    
+    if len(short_pauses)<=1 and len(long_pauses)<=1:
+        print('You took {} short pause and {} long pause.'.format(len(short_pauses), len(long_pauses)))
+    elif len(short_pauses)<=1:
+        print('You took {} short pause and {} long pauses.'.format(len(short_pauses), len(long_pauses)))
+    elif len(long_pauses)<=1:
+        print('You took {} short pauses and {} long pause.'.format(len(short_pauses), len(long_pauses)))
+    else:
+        print('You took {} short pauses and {} long pauses.'.format(len(short_pauses), len(long_pauses)))
+        
+    text = pause_feedback(pause_score)
+        
+    return pause_score, text  
+
+
+def pause_feedback(pause_score):
+    
+    text = ''
+    text_list = []
+    if pause_score>=90:
+        temp_lst = ['Great job!', 'Great work!', 'Excellent!', 'Bravo!', 'Amazing work!', 'Exemplary work!', 
+                   ]
+        temp_lst2 = ['You are doing well in reducing awkward pauses.', 'The less awkward pauses you have, the better your speech.',
+                    'With fewer awkward pauses the flow of your speech is not broken and its easy to understand.',
+                    'You really prepared your speech well as visible by your lack of awkward pauses.']
+        random.shuffle(temp_lst)
+        random.shuffle(temp_lst2)
+        text += """{} {} But remember pauses are not all bad. Great speakers use pause for introducing dramatic effect and introduce smooth transitions between their speech. Just imagine an anchor on stage saying, "Please, welcome the one and only.... Amitabh Bachhan." You will notice that there is often a pause before introducing Amitabh Bachhan in order to create suspense. Now you too practice introducing pauses purposefully to increase the quality of your speech.""".format(temp_lst[0], temp_lst2[0])
+        text_list += [temp_lst[0], temp_lst2[0], """But remember pauses are not all bad. Great speakers use pause for introducing dramatic effect and introduce smooth transitions between their speech. Just imagine an anchor on stage saying, "Please, welcome the one and only.... Amitabh Bachhan." You will notice that there is often a pause before introducing Amitabh Bachhan in order to create suspense. Now you too practice introducing pauses purposefully to increase the quality of your speech."""]
+    
+    elif pause_score>=80:
+        temp_lst = ['Good job!', 'Good work!', 'Well done!', 'Nice!']
+        temp_lst2 = ['You are doing well but can improve in reducing awkward pauses.', 
+                     'Your speech flow is good because you lack large number of awkward pauses. Nonetheless, you can do better.',
+                    'You are on path of success, work even more to reduce the number of clumsy pauses in your speech.',
+                    'Work on your speech some more until you minimize the number of unexpected pauses you take.']
+        random.shuffle(temp_lst)
+        random.shuffle(temp_lst2)
+        text += """{} {} When you have unexpected pauses then it can distract your audience. A pause can be powerful if it is planned well in speech such as an introduction (Here comes Mr. Akshay), or an exclamation (Wow!). However, unplanned pauses breaks your sentences in between and confuses your audience.""".format(temp_lst[0], temp_lst2[0])
+        text_list += [temp_lst[0], temp_lst2[0], """When you have unexpected pauses then it can distract your audience. A pause can be powerful if it is planned well in speech such as an introduction (Here comes Mr. Akshay), or an exclamation (Wow!). However, unplanned pauses breaks your sentences in between and confuses your audience."""]
+        
+    elif pause_score<80:
+        temp_lst = ['Satisfactory!', 'OK!', 'Not great!', 'You can do better!']
+        temp_lst2 = ['You need to improve in reducing clumsy pauses.', 
+                     'You have unusually large number of unexpected pauses in your speech.',
+                    'You should work more to reduce the number of long and short pauses from your speech.',
+                    'Your quality of speech can be improved by reducing the number of these awkward pauses.']
+        random.shuffle(temp_lst)
+        random.shuffle(temp_lst2)
+        text += """{} {} A large number of pauses in a speech is a sign of either lack of confidence or lack of preparation. Sometimes both. Try to practice your speech in advance in front of mirror or members of your family without any notes to improve confidence. Having less unwanted pauses will make you appear more confident in front of your audience and will also make you easy to understand.""".format(temp_lst[0], temp_lst2[0])
+        text_list += [temp_lst[0], temp_lst2[0], """A large number of pauses in a speech is a sign of either lack of confidence or lack of preparation. Sometimes both. Try to practice your speech in advance in front of mirror or members of your family without any notes to improve confidence. Having less unwanted pauses will make you appear more confident in front of your audience and will also make you easy to understand."""]
+        
+    return text, text_list
+
 
 '''Main function call'''
 def pause_main(file_location):

@@ -4,6 +4,9 @@ import os
 import boto3
 from aws_helper import upload_file_to_audios, generate_presigned_url
 from pause_finder import pause_main
+from pitch_finder import return_pitch_score
+from pace_finder import compute_articulation_rate
+from power_finder import return_energy_score
 from general_helpers import convert_webm_to_wav
 import json
 from flask_sqlalchemy import SQLAlchemy
@@ -12,6 +15,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from flask_migrate import Migrate
 from datetime import datetime, timedelta
 import uuid
+import requests
 
 ## Accessing .env file
 from dotenv import load_dotenv
@@ -165,6 +169,55 @@ def generate_presigned_url_all():
 
     return 'Generated presigned urls successfully!', 201
 
+@app.route('/generate_audio_signal_analysis', methods=['GET'])
+@jwt_required()
+def generate_audio_signal_analysis():
+    
+    missing_urls_recordings = Recording.query.filter_by(username=get_jwt_identity()).filter_by(audio_signal_analysis =  None).all()
+
+    if len(missing_urls_recordings) == 0:
+        return 'No recordings to analyze', 201
+
+    try:
+        os.mkdir('temp/')
+    except:
+        pass
+
+    for recording in missing_urls_recordings:
+
+        audio_file = 'temp/' + recording.unique_id + '.wav'
+
+        response = requests.get(recording.s3_presigned_url)
+        ## Download the file from the presigned url
+        if response.status_code == 200:
+            with open(audio_file, 'wb') as f:
+                f.write(response.content)
+            print("File downloaded successfully.")
+        else:
+            print(f"Failed to download file: {response.status_code}")
+
+
+        pause_info, t = pause_main(audio_file)
+        energy_score = return_energy_score(audio_file)
+        pitch_score = return_pitch_score(audio_file)
+        articulation_rate, pace_score = compute_articulation_rate(audio_file)
+        
+        recording.audio_signal_analysis = {
+            'pause': {"pause_info": pause_info, "time_arr": t},
+            'power': {"energy_score": energy_score},
+            'pitch': {"pitch_score": pitch_score},
+            'pace': {"articulation_rate": articulation_rate, "pace_score": pace_score}
+        }
+
+        ## Remove the file after analysis
+        os.remove(audio_file)
+
+    ## Remove the temp folder after analysis
+    os.rmdir('temp/')
+
+    db.session.commit()
+
+    return 'Generated audio signal analysis successfully!', 201 
 
 if __name__ == '__main__':
     with app.app_context():
