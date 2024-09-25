@@ -46,7 +46,7 @@ def pace_feedback(pace_score, articulation_rate):
             text += """{} Your pace is too slow and dull which will lose audience attention. Speed up the pace by trying speed reading with speaking which will develop the muscular strength and skill to speak faster.""".format(temp_lst[0])
             text_list += [temp_lst[0], """Your pace is too slow and dull which will lose audience attention. Speed up the pace by trying speed reading with speaking which will develop the muscular strength and skill to speak faster."""]
         
-    return text, text_list
+    return text
 
 
 

@@ -3,10 +3,10 @@ from flask_cors import CORS
 import os
 import boto3
 from aws_helper import upload_file_to_audios, generate_presigned_url
-from pause_finder import pause_main
-from pitch_finder import return_pitch_score
-from pace_finder import compute_articulation_rate
-from power_finder import return_energy_score
+from pause_finder import pause_main, pause_feedback, pause_score
+from pitch_finder import return_pitch_score, pitch_feedback
+from pace_finder import compute_articulation_rate, pace_feedback
+from power_finder import return_energy_score, energy_feedback
 from general_helpers import convert_webm_to_wav
 import json
 from flask_sqlalchemy import SQLAlchemy
@@ -142,7 +142,21 @@ def upload():
 @jwt_required()
 def list():
     current_user = User.query.filter_by(username=get_jwt_identity()).first()
-    file_list = [{"filename": file.file_name, "url": file.s3_presigned_url} for file in current_user.recordings]
+    file_list = []
+    for file in current_user.recordings:
+        current_dict = {"filename": file.file_name, "url": file.s3_presigned_url}
+        pause_score_, pause_feedback_text = pause_score(file.audio_signal_analysis['pause']['pause_info'], file.audio_signal_analysis['pause']['time_arr'])
+        pitch_score = file.audio_signal_analysis['pitch']['pitch_score']
+        energy_score = file.audio_signal_analysis['power']['energy_score']
+        pace_score = file.audio_signal_analysis['pace']['pace_score']
+        articulation_rate = file.audio_signal_analysis['pace']['articulation_rate']
+
+        current_dict['pause_feedback'] = pause_feedback_text
+        current_dict['pitch_feedback'] = pitch_feedback(pitch_score)
+        current_dict['energy_feedback'] = energy_feedback(energy_score)
+        current_dict['pace_feedback'] = pace_feedback(pace_score, articulation_rate)
+        
+        file_list.append(current_dict)
 
     return jsonify({'data': file_list}), 201
 

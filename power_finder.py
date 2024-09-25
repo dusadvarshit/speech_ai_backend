@@ -53,7 +53,7 @@ def energy_feedback(energy_score):
         text += """{} {}. Speaking with energy is vital for audience engagement. A lot of power comes from your lungs and breathing. Try practicing breathing and speaking from your stomach which means always take deep breath to fill all your diaphragm. Beyond that speak out loud sounds such as Om, Do, Re, Me, Fa, So, La, Ti for extended periods of time.""".format(temp_lst[0], temp_lst2[0])
         text_list += [temp_lst[0], temp_lst2[0], """Speaking with energy is vital for audience engagement. A lot of power comes from your lungs and breathing. Try practicing breathing and speaking from your stomach which means always take deep breath to fill all your diaphragm. Beyond that speak out loud sounds such as Om, Do, Re, Me, Fa, So, La, Ti for extended periods of time."""]
         
-    return text, text_list
+    return text
 
 def return_energy_score(file_location):
 

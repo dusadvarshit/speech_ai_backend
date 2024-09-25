@@ -73,4 +73,4 @@ def pitch_feedback(pitch_score):
         text += """{} {}. Having poor vocal range signifies lack of emotion and excitement in a speech. This can bore audience and lose them to stop listening. A good way to improve vocal variety is to practice your favorite movie dialogues especially which are emotional like patriotic movies. This will start to build your natural tendency to bring different flavors in your speech.""".format(temp_lst[0], temp_lst2[0])
         text_list += [temp_lst[0], temp_lst2[0], """Having poor vocal range signifies lack of emotion and excitement in a speech. This can bore audience and lose them to stop listening. A good way to improve vocal variety is to practice your favorite movie dialogues especially which are emotional like patriotic movies. This will start to build your natural tendency to bring different flavors in your speech."""]
         
-    return text, text_list
+    return text

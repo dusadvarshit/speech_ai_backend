@@ -197,7 +197,7 @@ def pause_feedback(pause_score):
         text += """{} {} A large number of pauses in a speech is a sign of either lack of confidence or lack of preparation. Sometimes both. Try to practice your speech in advance in front of mirror or members of your family without any notes to improve confidence. Having less unwanted pauses will make you appear more confident in front of your audience and will also make you easy to understand.""".format(temp_lst[0], temp_lst2[0])
         text_list += [temp_lst[0], temp_lst2[0], """A large number of pauses in a speech is a sign of either lack of confidence or lack of preparation. Sometimes both. Try to practice your speech in advance in front of mirror or members of your family without any notes to improve confidence. Having less unwanted pauses will make you appear more confident in front of your audience and will also make you easy to understand."""]
         
-    return text, text_list
+    return text
 
 
 '''Main function call'''
