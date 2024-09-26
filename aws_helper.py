@@ -1,5 +1,5 @@
 import boto3, os
-
+from botocore.exceptions import BotoCoreError, ClientError
 ## Accessing .env file
 from dotenv import load_dotenv
 
@@ -9,6 +9,11 @@ load_dotenv()
 s3 = boto3.client('s3', aws_access_key_id= os.environ['AWS_ACCESS_KEY_ID'],
     aws_secret_access_key= os.environ['AWS_SECRET_ACCESS_KEY'],
     region_name='us-east-2')  # Specify your preferred region)
+
+transcribe = boto3.client('transcribe', 
+    aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+    aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    region_name='us-east-2')
 
 BUCKET_NAME = 'vd-experiments'
 FOLDER_NAME = 'speech_ai/audios'
@@ -43,5 +48,33 @@ def generate_presigned_url(s3_filename, expiration=3600*24*7):
         return None
 
     return response
+
+def transcribe_audio(s3_filename, job_name, language_code='en-US'):
+    """
+    Transcribe an audio file from S3 using AWS Transcribe.
+    
+    :param s3_filename: The filename of the S3 object to transcribe
+    :param job_name: A unique name for the transcription job
+    :param language_code: The language code of the audio (default is 'en-US')
+    :return: Job name if successfully started, None otherwise
+    """
+    try:
+        s3_uri = f's3://{BUCKET_NAME}/{FOLDER_NAME.replace("audios", "transcriptions")}/{s3_filename}'
+        
+        transcribe.start_transcription_job(
+            TranscriptionJobName=job_name,
+            Media={'MediaFileUri': s3_uri},
+            MediaFormat=s3_filename.split('.')[-1],  # Assumes file extension is the format
+            LanguageCode=language_code,
+            OutputBucketName=BUCKET_NAME,
+            OutputKey=f'{FOLDER_NAME}/transcriptions/{job_name}.json'
+        )
+        
+        print(f"Transcription job '{job_name}' started successfully.")
+        return job_name
+    
+    except (BotoCoreError, ClientError) as e:
+        print(f"Error starting transcription job: {e}")
+        return None
 
 

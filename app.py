@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, Response, jsonify
 from flask_cors import CORS
 import os
 import boto3
-from aws_helper import upload_file_to_audios, generate_presigned_url
+from aws_helper import upload_file_to_audios, generate_presigned_url, transcribe_audio
 from pause_finder import pause_main, pause_feedback, pause_score
 from pitch_finder import return_pitch_score, pitch_feedback
 from pace_finder import compute_articulation_rate, pace_feedback
@@ -130,6 +130,7 @@ def upload():
 
         ## Upload file to AWS S3
         upload_file_to_audios(file, s3_filename)
+        transcribe_audio(s3_filename, job_name=new_recording.unique_id, language_code='en-US')
 
         return 'File uploaded successfully!'
     
@@ -172,7 +173,7 @@ def identity():
 # @jwt_required()
 def generate_presigned_url_all():
     
-    missing_urls_recordings = Recording.query.all()#filter_by(username=get_jwt_identity()).filter_by(s3_presigned_url =  None).all()
+    missing_urls_recordings = Recording.query.all()#.filter_by(username=get_jwt_identity()).filter_by(s3_presigned_url =  None).all()
 
     for recording in missing_urls_recordings:
         s3_filename = recording.unique_id + '.wav'
@@ -184,10 +185,10 @@ def generate_presigned_url_all():
     return 'Generated presigned urls successfully!', 201
 
 @app.route('/generate_audio_signal_analysis', methods=['GET'])
-@jwt_required()
+# @jwt_required()
 def generate_audio_signal_analysis():
     
-    missing_urls_recordings = Recording.query.filter_by(username=get_jwt_identity()).filter_by(audio_signal_analysis =  None).all()
+    missing_urls_recordings = Recording.query.all()#filter_by(username=get_jwt_identity()).filter_by(audio_signal_analysis =  None).all()
 
     if len(missing_urls_recordings) == 0:
         return 'No recordings to analyze', 201
