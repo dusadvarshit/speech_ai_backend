@@ -17,11 +17,12 @@ transcribe = boto3.client('transcribe',
 
 BUCKET_NAME = 'vd-experiments'
 FOLDER_NAME = 'speech_ai/audios'
+ENV_NAME = os.environ['ENV']
 
 def upload_file_to_audios(fileobj, filename):
     
     print('Uploading to AWS!!!')
-    s3_key = f'{FOLDER_NAME}/{filename}'
+    s3_key = f'{FOLDER_NAME}/{ENV_NAME}/{filename}'
 
     s3.upload_fileobj(fileobj, BUCKET_NAME, s3_key)
 
@@ -59,7 +60,7 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
     :return: Job name if successfully started, None otherwise
     """
     try:
-        s3_uri = f's3://{BUCKET_NAME}/{FOLDER_NAME.replace("audios", "transcriptions")}/{s3_filename}'
+        s3_uri = f's3://{BUCKET_NAME}/{FOLDER_NAME}/{s3_filename}'
         
         transcribe.start_transcription_job(
             TranscriptionJobName=job_name,
@@ -67,7 +68,7 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
             MediaFormat=s3_filename.split('.')[-1],  # Assumes file extension is the format
             LanguageCode=language_code,
             OutputBucketName=BUCKET_NAME,
-            OutputKey=f'{FOLDER_NAME}/transcriptions/{job_name}.json'
+            OutputKey=f'{FOLDER_NAME.replace("audios", "transcriptions")}/{job_name}.json'
         )
         
         print(f"Transcription job '{job_name}' started successfully.")

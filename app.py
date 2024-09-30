@@ -170,10 +170,11 @@ def identity():
 
 
 @app.route('/generate_presigned_url_all', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def generate_presigned_url_all():
     
-    missing_urls_recordings = Recording.query.all()#.filter_by(username=get_jwt_identity()).filter_by(s3_presigned_url =  None).all()
+    user = User.query.filter_by(username=get_jwt_identity()).first()
+    missing_urls_recordings = Recording.query.all()#.filter_by(user_id = user.id).filter_by(s3_presigned_url =  None).all()
 
     for recording in missing_urls_recordings:
         s3_filename = recording.unique_id + '.wav'
@@ -185,10 +186,11 @@ def generate_presigned_url_all():
     return 'Generated presigned urls successfully!', 201
 
 @app.route('/generate_audio_signal_analysis', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def generate_audio_signal_analysis():
     
-    missing_urls_recordings = Recording.query.all()#filter_by(username=get_jwt_identity()).filter_by(audio_signal_analysis =  None).all()
+    user = User.query.filter_by(username=get_jwt_identity()).first()
+    missing_urls_recordings = Recording.query.filter_by(user_id = user.id).filter_by(audio_signal_analysis =  None).all()
 
     if len(missing_urls_recordings) == 0:
         return 'No recordings to analyze', 201
