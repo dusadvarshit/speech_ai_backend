@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, Response, jsonify
 from flask_cors import CORS
 import os
 import boto3
-from aws_helper import upload_file_to_audios, generate_presigned_url, transcribe_audio
+from aws_helper import upload_file_to_audios, generate_presigned_url, transcribe_audio, run_generic_lambda
 from pause_finder import pause_main, pause_feedback, pause_score
 from pitch_finder import return_pitch_score, pitch_feedback
 from pace_finder import compute_articulation_rate, pace_feedback
@@ -124,19 +124,24 @@ def upload():
 
     s3_filename = new_recording.unique_id + '.wav'
     try:
+        ## Upload file to AWS S3
+        upload_file_to_audios(file, s3_filename)
+        url = generate_presigned_url(s3_filename)
+
+        new_recording.s3_presigned_url = url
         db.session.add(new_recording)
         db.session.commit()
         print('DB commit successful')
 
-        ## Upload file to AWS S3
-        upload_file_to_audios(file, s3_filename)
+        run_generic_lambda('4P_analysis', payload= json.dumps(
+            {'s3_urls': [url]}
+        ))
         transcribe_audio(s3_filename, job_name=new_recording.unique_id, language_code='en-US')
 
         return 'File uploaded successfully!'
     
     except Exception as e:
         print('Error in adding recording to DB',e)
-
     
 
 @app.route('/list')
@@ -189,52 +194,16 @@ def generate_presigned_url_all():
 @jwt_required()
 def generate_audio_signal_analysis():
     
-    user = User.query.filter_by(username=get_jwt_identity()).first()
-    missing_urls_recordings = Recording.query.filter_by(user_id = user.id).filter_by(audio_signal_analysis =  None).all()
+    missing_signal_recordings = Recording.query.filter_by(audio_signal_analysis =  None).all()
+    s3_urls = [i.s3_presigned_url for i in missing_signal_recordings]
 
-    if len(missing_urls_recordings) == 0:
-        return 'No recordings to analyze', 201
+    payload = json.dumps({
+    "s3_urls": s3_urls
+    })
 
-    try:
-        os.mkdir('temp/')
-    except:
-        pass
+    run_generic_lambda('4P_analysis', payload)
 
-    for recording in missing_urls_recordings:
-
-        audio_file = 'temp/' + recording.unique_id + '.wav'
-
-        response = requests.get(recording.s3_presigned_url)
-        ## Download the file from the presigned url
-        if response.status_code == 200:
-            with open(audio_file, 'wb') as f:
-                f.write(response.content)
-            print("File downloaded successfully.")
-        else:
-            print(f"Failed to download file: {response.status_code}")
-
-
-        pause_info, t = pause_main(audio_file)
-        energy_score = return_energy_score(audio_file)
-        pitch_score = return_pitch_score(audio_file)
-        articulation_rate, pace_score = compute_articulation_rate(audio_file)
-        
-        recording.audio_signal_analysis = {
-            'pause': {"pause_info": pause_info, "time_arr": t},
-            'power': {"energy_score": energy_score},
-            'pitch': {"pitch_score": pitch_score},
-            'pace': {"articulation_rate": articulation_rate, "pace_score": pace_score}
-        }
-
-        ## Remove the file after analysis
-        os.remove(audio_file)
-
-    ## Remove the temp folder after analysis
-    os.rmdir('temp/')
-
-    db.session.commit()
-
-    return 'Generated audio signal analysis successfully!', 201 
+    return 'Started a lambda function to perform audio signal analysis successfully!', 201 
 
 if __name__ == '__main__':
     with app.app_context():

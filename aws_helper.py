@@ -1,4 +1,4 @@
-import boto3, os
+import boto3, os, json
 from botocore.exceptions import BotoCoreError, ClientError
 ## Accessing .env file
 from dotenv import load_dotenv
@@ -38,7 +38,7 @@ def generate_presigned_url(s3_filename, expiration=3600*24*7):
     :return: Presigned URL as a string
     """
     try:
-        s3_key = f'{FOLDER_NAME}/{s3_filename}'
+        s3_key = f'{FOLDER_NAME}/{ENV_NAME}/{s3_filename}'
         response = s3.generate_presigned_url('get_object',
                                              Params={'Bucket': BUCKET_NAME, 'Key': s3_key},
                                              ExpiresIn=expiration)
@@ -60,7 +60,8 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
     :return: Job name if successfully started, None otherwise
     """
     try:
-        s3_uri = f's3://{BUCKET_NAME}/{FOLDER_NAME}/{s3_filename}'
+        s3_uri = f's3://{BUCKET_NAME}/{FOLDER_NAME}/{ENV_NAME}/{s3_filename}'
+        print(s3_uri)
         
         transcribe.start_transcription_job(
             TranscriptionJobName=job_name,
@@ -68,7 +69,7 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
             MediaFormat=s3_filename.split('.')[-1],  # Assumes file extension is the format
             LanguageCode=language_code,
             OutputBucketName=BUCKET_NAME,
-            OutputKey=f'{FOLDER_NAME.replace("audios", "transcriptions")}/{job_name}.json'
+            OutputKey=f'{FOLDER_NAME.replace("audios", "transcriptions")}/{ENV_NAME}/{job_name}.json'
         )
         
         print(f"Transcription job '{job_name}' started successfully.")
@@ -77,5 +78,17 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
     except (BotoCoreError, ClientError) as e:
         print(f"Error starting transcription job: {e}")
         return None
+
+def run_generic_lambda(lambda_function, payload):
+
+    lambda_client = boto3.client('lambda')
+
+    response = lambda_client.invoke(
+    FunctionName=lambda_function,
+    InvocationType='Event', 
+    Payload=json.dumps(payload)
+    )
+
+    return f"Started lambda: {lambda_function} successfully", 201
 
 
