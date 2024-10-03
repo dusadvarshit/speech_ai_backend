@@ -86,7 +86,7 @@ def run_generic_lambda(lambda_function, payload):
     response = lambda_client.invoke(
     FunctionName=lambda_function,
     InvocationType='Event', 
-    Payload=json.dumps(payload)
+    Payload=payload
     )
 
     return f"Started lambda: {lambda_function} successfully", 201
