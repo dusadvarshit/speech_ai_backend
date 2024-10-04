@@ -6,7 +6,7 @@ from numpy import mean
 import random
 from math import ceil, floor
 import json
-from scipy.signal import hamming 
+from scipy.signal.windows import hamming 
 import numpy as np
 import sys
 import parselmouth
