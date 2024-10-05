@@ -55,6 +55,7 @@ class Recording(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
     s3_presigned_url = db.Column(db.String(2048), nullable=True)
     audio_signal_analysis = db.Column(db.JSON, nullable=True)
+    audio_signal_feedback = db.Column(db.JSON, nullable=True)
 
 # Ensure the upload directory exists
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -149,15 +150,16 @@ def upload():
 def list():
     current_user = User.query.filter_by(username=get_jwt_identity()).first()
     file_list = []
+    print('Before loop')
     for file in current_user.recordings:
         current_dict = {"filename": file.file_name, "url": file.s3_presigned_url}
-        pause_score_, pause_feedback_text = pause_score(file.audio_signal_analysis['pause']['pause_info'], file.audio_signal_analysis['pause']['time_arr'])
+        # pause_score_, pause_feedback_text = pause_score(file.audio_signal_analysis['pause']['pause_info'], file.audio_signal_analysis['pause']['time_arr'])
         pitch_score = file.audio_signal_analysis['pitch']['pitch_score']
         energy_score = file.audio_signal_analysis['power']['energy_score']
         pace_score = file.audio_signal_analysis['pace']['pace_score']
         articulation_rate = file.audio_signal_analysis['pace']['articulation_rate']
-
-        current_dict['pause_feedback'] = pause_feedback_text
+ 
+        current_dict['pause_feedback'] = "This"#pause_feedback_text
         current_dict['pitch_feedback'] = pitch_feedback(pitch_score)
         current_dict['energy_feedback'] = energy_feedback(energy_score)
         current_dict['pace_feedback'] = pace_feedback(pace_score, articulation_rate)
