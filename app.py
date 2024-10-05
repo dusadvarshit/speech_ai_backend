@@ -10,6 +10,7 @@ from power_finder import return_energy_score, energy_feedback
 from general_helpers import convert_webm_to_wav
 import json
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import load_only
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_migrate import Migrate
@@ -153,16 +154,11 @@ def list():
     print('Before loop')
     for file in current_user.recordings:
         current_dict = {"filename": file.file_name, "url": file.s3_presigned_url}
-        # pause_score_, pause_feedback_text = pause_score(file.audio_signal_analysis['pause']['pause_info'], file.audio_signal_analysis['pause']['time_arr'])
-        pitch_score = file.audio_signal_analysis['pitch']['pitch_score']
-        energy_score = file.audio_signal_analysis['power']['energy_score']
-        pace_score = file.audio_signal_analysis['pace']['pace_score']
-        articulation_rate = file.audio_signal_analysis['pace']['articulation_rate']
  
-        current_dict['pause_feedback'] = "This"#pause_feedback_text
-        current_dict['pitch_feedback'] = pitch_feedback(pitch_score)
-        current_dict['energy_feedback'] = energy_feedback(energy_score)
-        current_dict['pace_feedback'] = pace_feedback(pace_score, articulation_rate)
+        current_dict['pause_feedback'] = file.audio_signal_feedback['pause_feedback']
+        current_dict['pitch_feedback'] = file.audio_signal_feedback['pitch_feedback']
+        current_dict['energy_feedback'] = file.audio_signal_feedback['power_feedback']
+        current_dict['pace_feedback'] = file.audio_signal_feedback['pace_feedback']
         
         file_list.append(current_dict)
 
@@ -181,7 +177,7 @@ def identity():
 def generate_presigned_url_all():
     
     user = User.query.filter_by(username=get_jwt_identity()).first()
-    missing_urls_recordings = Recording.query.all()#.filter_by(user_id = user.id).filter_by(s3_presigned_url =  None).all()
+    missing_urls_recordings = Recording.query.options(load_only(Recording.unique_id, Recording.s3_presigned_url)).all()#.filter_by(user_id = user.id).filter_by(s3_presigned_url =  None).all()
 
     for recording in missing_urls_recordings:
         s3_filename = recording.unique_id + '.wav'
@@ -196,7 +192,7 @@ def generate_presigned_url_all():
 @jwt_required()
 def generate_audio_signal_analysis():
     
-    missing_signal_recordings = Recording.query.filter_by(audio_signal_analysis =  None).all()
+    missing_signal_recordings = Recording.query.options(load_only(Recording.s3_presigned_url)).all() #.filter_by(audio_signal_analysis =  None)
     s3_urls = [i.s3_presigned_url for i in missing_signal_recordings]
 
     payload = json.dumps({

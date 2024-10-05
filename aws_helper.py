@@ -81,7 +81,7 @@ def transcribe_audio(s3_filename, job_name, language_code='en-US'):
 
 def run_generic_lambda(lambda_function, payload):
 
-    lambda_client = boto3.client('lambda')
+    lambda_client = boto3.client('lambda', region_name='us-east-2')
 
     response = lambda_client.invoke(
     FunctionName=lambda_function,
