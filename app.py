@@ -150,19 +150,34 @@ def upload():
 @jwt_required()
 def list():
     current_user = User.query.filter_by(username=get_jwt_identity()).first()
+    print(request.args)
+
+    page = request.args.get('page', 1, type=int)  # Default to page 1
+    per_page = request.args.get('per_page', 10, type=int)  # Default to 10 items per page
+    print('PAGE', page)
+    
+    # Query the database with LIMIT and OFFSET
+    recordings = Recording.query.options(load_only(Recording.file_name, Recording.s3_presigned_url, Recording.audio_signal_feedback)).filter_by(user_id=current_user.id).order_by(Recording.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
     file_list = []
-    print('Before loop')
-    for file in current_user.recordings:
+
+    for file in recordings: 
         current_dict = {"filename": file.file_name, "url": file.s3_presigned_url}
  
         current_dict['pause_feedback'] = file.audio_signal_feedback['pause_feedback']
         current_dict['pitch_feedback'] = file.audio_signal_feedback['pitch_feedback']
-        current_dict['energy_feedback'] = file.audio_signal_feedback['power_feedback']
+        current_dict['energy_feedback'] = file.audio_signal_feedback['energy_feedback']
         current_dict['pace_feedback'] = file.audio_signal_feedback['pace_feedback']
         
         file_list.append(current_dict)
 
-    return jsonify({'data': file_list}), 201
+    return jsonify({'data': file_list, 
+        'total': recordings.total,  
+        'pages': recordings.pages,  
+        'current_page': recordings.page,
+        'next_page': recordings.next_num,
+        'prev_page': recordings.prev_num 
+        }), 201
 
 @app.route('/identity')
 @jwt_required()
@@ -192,7 +207,7 @@ def generate_presigned_url_all():
 @jwt_required()
 def generate_audio_signal_analysis():
     
-    missing_signal_recordings = Recording.query.options(load_only(Recording.s3_presigned_url)).all() #.filter_by(audio_signal_analysis =  None)
+    missing_signal_recordings = Recording.query.options(load_only(Recording.s3_presigned_url)).filter_by(audio_signal_analysis =  None) # .all() #
     s3_urls = [i.s3_presigned_url for i in missing_signal_recordings]
 
     payload = json.dumps({
