@@ -140,7 +140,7 @@ def upload():
         ))
         transcribe_audio(s3_filename, job_name=new_recording.unique_id, language_code='en-US')
 
-        return 'File uploaded successfully!'
+        return 'File uploaded successfully!', 201
     
     except Exception as e:
         print('Error in adding recording to DB',e)
