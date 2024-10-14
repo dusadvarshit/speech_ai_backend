@@ -26,7 +26,7 @@ load_dotenv()
 
 app = Flask(__name__)
 # Allow requests from the React app
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "https://speechai.blackboardradio.com"]}})
 
 # Configure PostgreSQL database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
@@ -100,7 +100,7 @@ def login():
 @app.route('/')
 # @jwt_required()
 def index():
-    return render_template('index.html')
+    return render_template('index.html'), 201
 
 @app.route('/hello')
 def hello():

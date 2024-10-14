@@ -7,6 +7,7 @@ WORKDIR /app/speech_ai_backend
 # Install dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+RUN apt-get -y update; apt-get -y install curl
 
 # Copy the rest of the application AND remove the .env file
 COPY . .
